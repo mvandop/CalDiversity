@@ -1,5 +1,22 @@
+# General R setup ----
+
+#Options
+options(stringsAsFactors = F)
+
 #Load in required packages (I use pacman to make sure they're in my library)
-pacman::p_load(raster, sp, maptools)
+pacman::p_load(raster, sp, maptools, ggmap, 
+               rgdal, broom, rgeos, GISTools, 
+               dplyr, ggplot2, ggthemes, magrittr, viridis)
+
+# My ggplot2 theme
+theme_ed <- theme(
+  legend.position = "bottom",
+  panel.background = element_rect(fill = NA),
+  axis.ticks = element_line(color = "grey95", size = 0.3),
+  panel.grid.major = element_line(color = "grey95", size = 0.3),
+  panel.grid.minor = element_line(color = "grey95", size = 0.3),
+  legend.key = element_blank())
+
 
 # source this script to create a variable "box" that points to each local box directory
 box <- c("C:/Users/Matthew/Box Sync/CalDiversity_2018_Box",
@@ -9,29 +26,23 @@ box <- box[dir.exists(box)]
 setwd(box)
 
 
-#Read in specimen data
+
+#Read in specimen data ----
 jepname <- paste0(box, "/Data/specimens/California_Species_clean_All_epsg_3310.Rdata")
-#Note that I cannot load this file currently
-jep <- load(jepname)
-#dim(jep)
-#names(jep)
+jep <- readRDS(jepname)
 
 #Set up projection and plot
 aea.project <- "+proj=aea +datum=NAD83 +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000"
 
-#jep[1,]
-#plot(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp=1)
-
-
+jep[1,]
+plot(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp = 1)
 
 #Read in and plot the baselayer
 demname <- paste0(box, "/Data/baselayers/ca_270m_t6.asc")
 dem <- raster(demname)
 plot(dem)
 
-
-
-#Start reading in the climate information
+# Read in Raster Layers of Climate Variables ----
 
 #Helpful notes on files from David
 # BCM2014_ppt1981_2010_wy_ave_HST.Rdata
@@ -42,56 +53,85 @@ plot(dem)
 # wy = water yearsd
 # ave = average
 
-#Load in all of the Climate Data
 
 #30 year average Precipitation (1981-2010)
 ppt8110name <- paste0(box, "/Data/climate/BCM2014_ppt1981_2010_wy_ave_HST.Rdata")
 ppt8110 <- readRDS(ppt8110name)
 plot(ppt8110)
-#points(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp=1)
-
-
+points(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp=1)
 #30 year average Precipitation (1951-1980)
 ppt5180name <- paste0(box, "/Data/climate/BCM2014_ppt1951_1980_wy_ave_HST.Rdata")
 ppt5180 <- readRDS(ppt5180name)
-plot(ppt5180)
-
 #30 year average Climatic Water Deficit (1951-1980)
 cwd5180name <- paste0(box, "/Data/climate/BCM2014_cwd1951_1980_wy_ave_HST.Rdata")
 cwd5180 <- readRDS(cwd5180name)
-plot(cwd5180)
-
 #30 year average Climatic Water Deficit (1981-2010)
 cwd8110name <- paste0(box, "/Data/climate/BCM2014_cwd1981_2010_wy_ave_HST.Rdata")
 cwd8110 <- readRDS(cwd8110name)
-plot(cwd8110)
-
 #30 year average Mean Winter Air Temperature (1951-1980)
 djf5180name <- paste0(box, "/Data/climate/BCM2014_djf1951_1980_wy_ave_HST.Rdata")
 djf5180 <- readRDS(djf5180name)
-plot(djf5180)
-
 #30 year average Mean Winter Air Temperature (1981-2010)
 djf8110name <- paste0(box, "/Data/climate/BCM2014_djf1981_2010_wy_ave_HST.Rdata")
 djf8110 <- readRDS(djf8110name)
-plot(djf8110)
-
 #30 year average Mean Summer Air Temperature (1951-1980)
 jja5180name <- paste0(box, "/Data/climate/BCM2014_jja1951_1980_wy_ave_HST.Rdata")
 jja5180 <- readRDS(jja5180name)
-plot(jja5180)
-
 #30 year average Mean Summer Air Temperature (1981-2010)
 jja8110name <- paste0(box, "/Data/climate/BCM2014_jja1981_2010_wy_ave_HST.Rdata")
 jja8110 <- readRDS(jja8110name)
-plot(jja8110)
-
 #30 year average Actual Evapotranspiration (1951-1980)
 aet5180name <- paste0(box, "/Data/climate/BCM2014_aet1951_1980_wy_ave_HST.Rdata")
 aet5180 <- readRDS(aet5180name)
-plot(aet5180)
-
 #30 year average Actual Evapotranspiration (1981-2010)
 aet8110name <- paste0(box, "/Data/climate/BCM2014_aet1981_2010_wy_ave_HST.Rdata")
 aet8110 <- readRDS(aet8110name)
-plot(aet8110)
+
+
+
+
+
+# Extracting data from the raster ----
+
+#Setting up jep for the raster::extract function
+jep %<>% tbl_df()
+#Define the coordinates
+coordinates(jep) <- ~ x_epsg_3310 + y_epsg_3310
+#Assign a CRS to the data
+proj4string(jep) <- aea.project
+
+
+pptextract81 <- raster:: extract(x = ppt8110, y = jep, fun = mean, na.rm = T, sp = T)
+pptextract81 %<>% tbl_df()
+names(pptextract81)[names(df) == 'layer'] <- 'ppt81'
+
+#Looking at Average Precipitation Across the Dataset
+ggplot() +
+  geom_density(data = filter(pptextract81, current_name_binomial == "Juncus covillei"),
+               aes(x = layer, color = "Juncus covillei", fill = "Juncus covillei"),
+               alpha = 0.6) +
+  geom_density(data = filter(pptextract81, current_name_binomial == "Physocarpus capitatus"),
+               aes(x = layer, color = "Physocarpus capitatus", fill = "Physocarpus capitatus"),
+               alpha = 0.6) +
+  geom_density(data = filter(pptextract81, current_name_binomial == "Phoradendron californicum"),
+               aes(x = layer, color = "Phoradendron californicum", fill = "Phoradendron californicum"),
+               alpha = 0.6) +
+  ylab("Density") +
+  xlab("Average Precipitation 1981-2010") +
+  theme_ed +
+  scale_color_viridis("", discrete = T) +
+  scale_fill_viridis("", discrete = T)
+
+# Doing this with the rest of the data
+
+jep %<>% tbl_df()
+jepcoords <- jep %>% filter(x_epsg_3310, y_epsg_3310)
+#Define the coordinates
+coordinates(jepcoords) <- ~ x_epsg_3310 + y_epsg_3310
+#Assign a CRS to the data
+proj4string(jepcoords) <- aea.project
+
+extractmultiple <- function(rasterlayer){
+  extraction <- raster:: extract(x = rasterlayer, y = jep, fun = mean, na.rm = T, sp = T)
+  return(extraction) 
+}
