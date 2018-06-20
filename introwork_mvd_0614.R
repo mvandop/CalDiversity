@@ -4,7 +4,7 @@
 options(stringsAsFactors = F)
 
 #Load in required packages (I use pacman to make sure they're in my library)
-pacman::p_load(raster, sp, maptools, ggmap, 
+pacman::p_load(raster, sp, maptools, ggmap, purrr,
                rgdal, broom, rgeos, GISTools, 
                dplyr, ggplot2, ggthemes, magrittr, viridis)
 
@@ -55,43 +55,33 @@ plot(dem)
 
 
 #30 year average Precipitation (1981-2010)
-ppt8110name <- paste0(box, "/Data/climate/BCM2014_ppt1981_2010_wy_ave_HST.Rdata")
-ppt8110 <- readRDS(ppt8110name)
+ppt8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_ppt1981_2010_wy_ave_HST.Rdata"))
 plot(ppt8110)
-points(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp=1)
+points(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp = 1)
 #30 year average Precipitation (1951-1980)
-ppt5180name <- paste0(box, "/Data/climate/BCM2014_ppt1951_1980_wy_ave_HST.Rdata")
-ppt5180 <- readRDS(ppt5180name)
+ppt5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_ppt1951_1980_wy_ave_HST.Rdata"))
 #30 year average Climatic Water Deficit (1951-1980)
-cwd5180name <- paste0(box, "/Data/climate/BCM2014_cwd1951_1980_wy_ave_HST.Rdata")
-cwd5180 <- readRDS(cwd5180name)
+cwd5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_cwd1951_1980_wy_ave_HST.Rdata"))
 #30 year average Climatic Water Deficit (1981-2010)
-cwd8110name <- paste0(box, "/Data/climate/BCM2014_cwd1981_2010_wy_ave_HST.Rdata")
-cwd8110 <- readRDS(cwd8110name)
+cwd8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_cwd1981_2010_wy_ave_HST.Rdata"))
 #30 year average Mean Winter Air Temperature (1951-1980)
-djf5180name <- paste0(box, "/Data/climate/BCM2014_djf1951_1980_wy_ave_HST.Rdata")
-djf5180 <- readRDS(djf5180name)
+djf5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_djf1951_1980_wy_ave_HST.Rdata"))
 #30 year average Mean Winter Air Temperature (1981-2010)
-djf8110name <- paste0(box, "/Data/climate/BCM2014_djf1981_2010_wy_ave_HST.Rdata")
-djf8110 <- readRDS(djf8110name)
+djf8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_djf1981_2010_wy_ave_HST.Rdata"))
 #30 year average Mean Summer Air Temperature (1951-1980)
-jja5180name <- paste0(box, "/Data/climate/BCM2014_jja1951_1980_wy_ave_HST.Rdata")
-jja5180 <- readRDS(jja5180name)
+jja5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_jja1951_1980_wy_ave_HST.Rdata"))
 #30 year average Mean Summer Air Temperature (1981-2010)
-jja8110name <- paste0(box, "/Data/climate/BCM2014_jja1981_2010_wy_ave_HST.Rdata")
-jja8110 <- readRDS(jja8110name)
+jja8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_jja1981_2010_wy_ave_HST.Rdata"))
 #30 year average Actual Evapotranspiration (1951-1980)
-aet5180name <- paste0(box, "/Data/climate/BCM2014_aet1951_1980_wy_ave_HST.Rdata")
-aet5180 <- readRDS(aet5180name)
+aet5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_aet1951_1980_wy_ave_HST.Rdata"))
 #30 year average Actual Evapotranspiration (1981-2010)
-aet8110name <- paste0(box, "/Data/climate/BCM2014_aet1981_2010_wy_ave_HST.Rdata")
-aet8110 <- readRDS(aet8110name)
+aet8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_aet1981_2010_wy_ave_HST.Rdata"))
 
 
 
 
 
-# Extracting data from the raster ----
+# Extracting data from an example raster and plotting information----
 
 #Setting up jep for the raster::extract function
 jep %<>% tbl_df()
@@ -101,7 +91,7 @@ coordinates(jep) <- ~ x_epsg_3310 + y_epsg_3310
 proj4string(jep) <- aea.project
 
 
-pptextract81 <- raster:: extract(x = ppt8110, y = jep, fun = mean, na.rm = T, sp = T)
+pptextract81 <- raster::extract(x = ppt8110, y = jep, fun = mean, na.rm = T, sp = T)
 pptextract81 %<>% tbl_df()
 names(pptextract81)[names(df) == 'layer'] <- 'ppt81'
 
@@ -122,7 +112,7 @@ ggplot() +
   scale_color_viridis("", discrete = T) +
   scale_fill_viridis("", discrete = T)
 
-# Doing this with the rest of the data
+# Adding all raster information to the database -----
 
 jep %<>% tbl_df()
 jepcoords <- jep %>% filter(x_epsg_3310, y_epsg_3310)
@@ -131,7 +121,17 @@ coordinates(jepcoords) <- ~ x_epsg_3310 + y_epsg_3310
 #Assign a CRS to the data
 proj4string(jepcoords) <- aea.project
 
-extractmultiple <- function(rasterlayer){
-  extraction <- raster:: extract(x = rasterlayer, y = jep, fun = mean, na.rm = T, sp = T)
-  return(extraction) 
+extractmultiple <- function(rasterlayer, layername){
+  extraction <- raster::extract(x = rasterlayer, y = jep, fun = mean, na.rm = T, sp = T)
+  extraction %<>% tbl_df()
+  names(extraction)[names(extraction) == 'layer'] <- layername
+  return(extraction) %>% select(layername)
 }
+
+rasterlayers <- c(ppt5180, ppt8110, cwd5180, cwd8110, aet5180, aet8110, djf5180, djf8110, jja5180, jja8110)
+layernames <- c('ppt5180', 'ppt8110', 'cwd5180', 'cwd8110', 'aet5180', 'aet8110', 'djf5180', 'djf8110', 'jja5180', 'jja8110')
+
+rasters <- map2_dfc(rasterlayers, layernames, extractmultiple)
+
+jep <- jep %<>% tbl_df()
+jepfull <- cbind(jep, rasters)
