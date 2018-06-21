@@ -4,8 +4,8 @@
 options(stringsAsFactors = F)
 
 #Load in required packages (I use pacman to make sure they're in my library)
-pacman::p_load(raster, sp, maptools, ggmap, purrr,
-               rgdal, broom, rgeos, GISTools, 
+pacman::p_load(raster, sp, maptools, ggmap, purrr, readr,
+               rgdal, broom, rgeos, GISTools, tidyr,
                dplyr, ggplot2, ggthemes, magrittr, viridis)
 
 # My ggplot2 theme
@@ -28,7 +28,10 @@ setwd(box)
 
 
 #Read in specimen data ----
-jepname <- paste0(box, "/Data/specimens/California_Species_clean_All_epsg_3310.Rdata")
+
+#Here, I'm not sure why it reads in as jepfull? 
+#I know that's what it's called in the previous R Script, but am not totally sure why they are synced. 
+jepname <- paste0(box, "/Data/jepclimeraster.RData")
 jep <- readRDS(jepname)
 
 #Set up projection and plot
@@ -37,101 +40,29 @@ aea.project <- "+proj=aea +datum=NAD83 +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-12
 jep[1,]
 plot(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp = 1)
 
-#Read in and plot the baselayer
-demname <- paste0(box, "/Data/baselayers/ca_270m_t6.asc")
-dem <- raster(demname)
-plot(dem)
+#Read in the fire_traits data
+bark_thickness_traits <- read_csv("fire_traits/data/bark_thickness_traits.csv")
+ffe_traits <- read_csv("fire_traits/data/ffe_traits.csv")
+flam_traits <- read_csv("fire_traits/data/flam_traits.csv")
+S_A_traits <- read_csv("fire_traits/data/S&A_traits.csv")
+species_list <- read_csv("fire_traits/data/species_list.csv")
+try_traits <- read_csv("fire_traits/data/try_traits.csv")
 
-# Read in Raster Layers of Climate Variables ----
+#Work to match the species names for jep
+try_traits <- try_traits %>% separate(col = Scientific_Name, into = c("current_genus", "current_species", "current_subspecies"), sep = "_", remove = FALSE)
 
-#Helpful notes on files from David
-# BCM2014_ppt1981_2010_wy_ave_HST.Rdata
-# BCM = basin characterization model
-# 2014 is version
-# ppt = precipitation
-# 1981_2010 = 30 year average
-# wy = water yearsd
-# ave = average
-
-
-#30 year average Precipitation (1981-2010)
-ppt8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_ppt1981_2010_wy_ave_HST.Rdata"))
-plot(ppt8110)
-points(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp = 1)
-#30 year average Precipitation (1951-1980)
-ppt5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_ppt1951_1980_wy_ave_HST.Rdata"))
-#30 year average Climatic Water Deficit (1951-1980)
-cwd5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_cwd1951_1980_wy_ave_HST.Rdata"))
-#30 year average Climatic Water Deficit (1981-2010)
-cwd8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_cwd1981_2010_wy_ave_HST.Rdata"))
-#30 year average Mean Winter Air Temperature (1951-1980)
-djf5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_djf1951_1980_wy_ave_HST.Rdata"))
-#30 year average Mean Winter Air Temperature (1981-2010)
-djf8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_djf1981_2010_wy_ave_HST.Rdata"))
-#30 year average Mean Summer Air Temperature (1951-1980)
-jja5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_jja1951_1980_wy_ave_HST.Rdata"))
-#30 year average Mean Summer Air Temperature (1981-2010)
-jja8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_jja1981_2010_wy_ave_HST.Rdata"))
-#30 year average Actual Evapotranspiration (1951-1980)
-aet5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_aet1951_1980_wy_ave_HST.Rdata"))
-#30 year average Actual Evapotranspiration (1981-2010)
-aet8110 <- readRDS(paste0(box, "/Data/climate/BCM2014_aet1981_2010_wy_ave_HST.Rdata"))
+#Filter the datasets to get the information we want to join
+ffe_traitsfil <- ffe_traits %>% select(Scientific_Name, In.FFE, Bark.Thickness.25.4, Bark.Thickness.Source, Wood.density, Wood.density.Source, Decay.class, Decay.class.Source, Leaf.longevity, Leaf.longevity.Source)
+bark_thickness_traitsfil <- bark_thickness_traits %>% select(Scientific_Name, CodeNum, Western, California, Gymno, Bark.Thickness.25.4.FFE2009, Bark.Thickness.Index.FFE2009, Bark.Thickness.Multiplier.FFE2009, Bark.Thickness.25.4.FOFEM2017, Bark.Thickness.Index.FOFEM2017, Bark.Thickness.Multiplier.FOFEM.2017)
+flam_traitsfil <- flam_traits %>% select(Scientific_Name, Flame_duration, Flame_duration.Source, Flame_ht, Flame_ht.Source, Pct_consumed, Pct_consumed.Source, Smolder_duration, Smolder_duration.Source)
+S_A_traitsfil <- S_A_traits %>% select(Scientific_Name, Serotiny, Serotiny.Source, Self.pruning, Self.pruning.Source)
+species_listfil <- species_list %>% select(Scientific_Name, CA_ID, Generic, Subsp, Has_BA)
 
 
 
-
-
-# Extracting data from an example raster and plotting information----
-
-#Setting up jep for the raster::extract function
-jep %<>% tbl_df()
-#Define the coordinates
-coordinates(jep) <- ~ x_epsg_3310 + y_epsg_3310
-#Assign a CRS to the data
-proj4string(jep) <- aea.project
-
-
-pptextract81 <- raster::extract(x = ppt8110, y = jep, fun = mean, na.rm = T, sp = T)
-pptextract81 %<>% tbl_df()
-names(pptextract81)[names(df) == 'layer'] <- 'ppt81'
-
-#Looking at Average Precipitation Across the Dataset
-ggplot() +
-  geom_density(data = filter(pptextract81, current_name_binomial == "Juncus covillei"),
-               aes(x = layer, color = "Juncus covillei", fill = "Juncus covillei"),
-               alpha = 0.6) +
-  geom_density(data = filter(pptextract81, current_name_binomial == "Physocarpus capitatus"),
-               aes(x = layer, color = "Physocarpus capitatus", fill = "Physocarpus capitatus"),
-               alpha = 0.6) +
-  geom_density(data = filter(pptextract81, current_name_binomial == "Phoradendron californicum"),
-               aes(x = layer, color = "Phoradendron californicum", fill = "Phoradendron californicum"),
-               alpha = 0.6) +
-  ylab("Density") +
-  xlab("Average Precipitation 1981-2010") +
-  theme_ed +
-  scale_color_viridis("", discrete = T) +
-  scale_fill_viridis("", discrete = T)
-
-# Adding all raster information to the database -----
-
-jep %<>% tbl_df()
-jepcoords <- jep %>% filter(x_epsg_3310, y_epsg_3310)
-#Define the coordinates
-coordinates(jepcoords) <- ~ x_epsg_3310 + y_epsg_3310
-#Assign a CRS to the data
-proj4string(jepcoords) <- aea.project
-
-extractmultiple <- function(rasterlayer, layername){
-  extraction <- raster::extract(x = rasterlayer, y = jep, fun = mean, na.rm = T, sp = T)
-  extraction %<>% tbl_df()
-  names(extraction)[names(extraction) == 'layer'] <- layername
-  return(extraction) %>% select(layername)
-}
-
-rasterlayers <- c(ppt5180, ppt8110, cwd5180, cwd8110, aet5180, aet8110, djf5180, djf8110, jja5180, jja8110)
-layernames <- c('ppt5180', 'ppt8110', 'cwd5180', 'cwd8110', 'aet5180', 'aet8110', 'djf5180', 'djf8110', 'jja5180', 'jja8110')
-
-rasters <- map2_dfc(rasterlayers, layernames, extractmultiple)
-
-jep <- jep %<>% tbl_df()
-jepfull <- cbind(jep, rasters)
+#Join the fire_traits data together to bring into jep
+fire_traits <- try_traits %>% full_join(ffe_traitsfil, by = "Scientific_Name") %>% 
+                full_join(bark_thickness_traitsfil, by = "Scientific_Name") %>% 
+                full_join(flam_traitsfil, by = "Scientific_Name") %>% 
+                full_join(S_A_traitsfil, by = "Scientific_Name") %>% 
+                full_join(species_listfil, by = "Scientific_Name")

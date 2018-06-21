@@ -135,3 +135,7 @@ rasters <- map2_dfc(rasterlayers, layernames, extractmultiple)
 
 jep <- jep %<>% tbl_df()
 jepfull <- cbind(jep, rasters)
+
+#Saving jepfull
+
+saveRDS(jepfull, file = paste0(box, "/Data/jepclimeraster.RData"))
