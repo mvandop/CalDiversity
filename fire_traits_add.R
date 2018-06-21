@@ -59,10 +59,24 @@ S_A_traitsfil <- S_A_traits %>% select(Scientific_Name, Serotiny, Serotiny.Sourc
 species_listfil <- species_list %>% select(Scientific_Name, CA_ID, Generic, Subsp, Has_BA)
 
 
-
 #Join the fire_traits data together to bring into jep
 fire_traits <- try_traits %>% full_join(ffe_traitsfil, by = "Scientific_Name") %>% 
                 full_join(bark_thickness_traitsfil, by = "Scientific_Name") %>% 
                 full_join(flam_traitsfil, by = "Scientific_Name") %>% 
                 full_join(S_A_traitsfil, by = "Scientific_Name") %>% 
                 full_join(species_listfil, by = "Scientific_Name")
+
+#This gives way more observations than expected--why is this? 
+jep_fire <- jep %>% left_join(fire_traits, by = c("current_genus" = "current_genus", "current_species" = "current_species"))
+
+#This example shows that the basic premise is working. 
+jeptry <- jep %>% filter(current_genus == "Abies", current_species == "amabilis")
+View(jeptry)
+jeptry2 <- jep_fire %>% filter(current_genus == "Abies", current_species == "amabilis")
+View(jeptry2)
+
+#Let's try an example with subspecies: (this is where the issue lies)
+jepsub <- jep %>% filter(current_genus == "Abies", current_species == "magnifica")
+View(jepsub)
+jepsub2 <- jep_fire %>% filter(current_genus == "Abies", current_species == "magnifica")
+View(jepsub2)
