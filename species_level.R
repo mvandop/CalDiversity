@@ -5,7 +5,7 @@ options(stringsAsFactors = F)
 
 #Load in required packages (I use pacman to make sure they're in my library)
 pacman::p_load(raster, sp, maptools, ggmap, purrr, readr,
-               rgdal, broom, rgeos, GISTools, tidyr,
+               rgdal, broom, rgeos, GISTools, tidyr, stringr,
                dplyr, ggplot2, ggthemes, magrittr, viridis)
 
 # My ggplot2 theme
@@ -29,17 +29,25 @@ setwd(box)
 
 #Read in specimen data ----
 
-#Here, I'm not sure why it reads in as jepfull? 
-#I know that's what it's called in the previous R Script, but am not totally sure why they are synced. 
-jepname <- paste0(box, "/Data/jepclimeraster.RData")
+jepname <- paste0(box, "/Data/jepclimefire.RData")
 jep <- readRDS(jepname)
 
-#Set up projection and plot
-aea.project <- "+proj=aea +datum=NAD83 +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000"
 
-jep[1,]
-plot(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp = 1)
-
+#Collapse into various species
+jepspecies <- jep %>% group_by(current_name_binomial) %>% 
+  # select(ppt5180, ppt8110, aet5180, aet8110, jja5180, jja8110, 
+  #        djf5180, djf8110, cwd5180, cwd8110)  %>% 
+  summarize(meanppt5180 = mean(ppt5180, na.rm = T), meanppt8110 = mean(ppt8110, na.rm = T), 
+            meanaet5180 = mean(aet5180, na.rm = T), meanaet8110 = mean(aet8110, na.rm = T), 
+            meanjja5180 = mean(jja5180, na.rm = T), meanjja8110 = mean(jja8110, na.rm = T), 
+            meandjf5180 = mean(djf5180, na.rm = T), meandjf8110 = mean(djf8110, na.rm = T), 
+            meancwd5180 = mean(cwd5180, na.rm = T), meancwd8110 = mean(cwd8110, na.rm = T), 
+            meanfire = mean(firecount, na.rm = T))
+jepspecies$current_name_binomial <- str_replace_all(jepspecies$current_name_binomial, " ", "_")
+  
+ 
+  
+#Add in fire_traits information
 #Read in the fire_traits data
 bark_thickness_traits <- read_csv("fire_traits/data/bark_thickness_traits.csv")
 ffe_traits <- read_csv("fire_traits/data/ffe_traits.csv")
@@ -61,23 +69,19 @@ species_listfil <- species_list %>% select(Scientific_Name, CA_ID, Generic, Subs
 
 #Join the fire_traits data together to bring into jep
 fire_traits <- try_traits %>% full_join(ffe_traitsfil, by = "Scientific_Name") %>% 
-                full_join(bark_thickness_traitsfil, by = "Scientific_Name") %>% 
-                full_join(flam_traitsfil, by = "Scientific_Name") %>% 
-                full_join(S_A_traitsfil, by = "Scientific_Name") %>% 
-                full_join(species_listfil, by = "Scientific_Name")
+  full_join(bark_thickness_traitsfil, by = "Scientific_Name") %>% 
+  full_join(flam_traitsfil, by = "Scientific_Name") %>% 
+  full_join(S_A_traitsfil, by = "Scientific_Name") %>% 
+  full_join(species_listfil, by = "Scientific_Name")
+
+fire_traits <- fire_traits %>% mutate(current_name_binomial = paste0(current_genus, "_", current_species))
 
 
-#This gives way more observations than expected--why is this? 
-jep_fire <- jep %>% left_join(fire_traits, by = c("current_genus" = "current_genus", "current_species" = "current_species"))
+fire_traits_num <- fire_traits %>%
+  group_by(current_genus, current_species) %>% 
+  select_if(is.numeric) %>% summarize_all( mean, na.rm = T)
 
-#This example shows that the basic premise is working. 
-jeptry <- jep %>% filter(current_genus == "Abies", current_species == "amabilis")
-View(jeptry)
-jeptry2 <- jep_fire %>% filter(current_genus == "Abies", current_species == "amabilis")
-View(jeptry2)
 
-#Let's try an example with subspecies: (this is where the issue lies)
-jepsub <- jep %>% filter(current_genus == "Abies", current_species == "magnifica")
-View(jepsub)
-jepsub2 <- jep_fire %>% filter(current_genus == "Abies", current_species == "magnifica")
-View(jepsub2)
+jepspecies_fire <- jepspecies %>% left_join(fire_traits, by = "current_name_binomial")
+
+
