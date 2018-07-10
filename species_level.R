@@ -29,7 +29,7 @@ setwd(box)
 
 #Read in specimen data ----
 
-jepname <- paste0(box, "/Data/jepclimefire.RData")
+jepname <- paste0(box, "/Data/jepclimefireraster2.RData")
 jep <- readRDS(jepname)
 
 
@@ -42,7 +42,8 @@ jepspecies <- jep %>% group_by(current_name_binomial) %>%
             meanjja5180 = mean(jja5180, na.rm = T), meanjja8110 = mean(jja8110, na.rm = T), 
             meandjf5180 = mean(djf5180, na.rm = T), meandjf8110 = mean(djf8110, na.rm = T), 
             meancwd5180 = mean(cwd5180, na.rm = T), meancwd8110 = mean(cwd8110, na.rm = T), 
-            meanfire = mean(firecount, na.rm = T))
+            meanfire_20_16 = mean(firecount, na.rm = T), meanbigfire_84_25 = mean(numfires, na.rm = T), 
+            meanmaxSev = mean(maxSev, na.rm = T), meanaveSev  = mean(aveSev, na.rm = T))
 jepspecies$current_name_binomial <- str_replace_all(jepspecies$current_name_binomial, " ", "_")
   
  

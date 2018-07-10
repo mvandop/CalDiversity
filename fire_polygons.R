@@ -29,12 +29,6 @@ setwd(box)
 firep17_1 <- sf::st_read(dsn = paste0(box, "/Data/fire17_1.gdb"), layer = "firep17_1")
 fire_geom <- st_geometry(firep17_1)
 
-# This code does not work the run the intersections of the various polygons.
-# Error code: "ParseException: Unknown EWKB type 12"
-# Link to the code that does run this process-it's pretty neat! 
-# https://r-spatial.github.io/sf/reference/geos_binary_ops.html
-# st <- st_sf(firep17_1)
-# i = st_intersection(st)
 
 #Bring in the baselayer
 demname <- paste0(box, "/Data/baselayers/ca_270m_t6.asc")
@@ -117,7 +111,7 @@ firep <- fasterize(firep17_filtered, dem, fun = "sum")
 
 #Extract and plot for jepspecies
 
-jepname <- paste0(box, "/Data/jepclimefire.RData")
+jepname <- paste0(box, "/Data/jepclimefireraster.RData")
 jep <- readRDS(jepname)
 
 #Setting up jep for the raster::extract function
@@ -132,7 +126,7 @@ firecountextract <- raster::extract(x = firep, y = jep, fun = mean, na.rm = T, s
 firecountextract %<>% tbl_df()
 names(firecountextract)[names(firecountextract) == 'layer'] <- 'firecount'
 
-saveRDS(firecountextract, file = paste0(box, "/Data/jepclimefire.RData"))
+saveRDS(firecountextract, file = paste0(box, "/Data/jepclimefireraster2.RData"))
 
 #Doing some quick visualizations 
 cwd5180 <- readRDS(paste0(box, "/Data/climate/BCM2014_cwd1951_1980_wy_ave_HST.Rdata"))

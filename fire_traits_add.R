@@ -31,14 +31,13 @@ setwd(box)
 
 #Here, I'm not sure why it reads in as jepfull? 
 #I know that's what it's called in the previous R Script, but am not totally sure why they are synced. 
-jepname <- paste0(box, "/Data/jepclimeraster.RData")
+jepname <- paste0(box, "/Data/jepclimefireraster.RData")
 jep <- readRDS(jepname)
+#Fix the NaN from the average severity calculation
+jep[ is.na(jep) ] <- NA
 
-#Set up projection and plot
+#Set up projection
 aea.project <- "+proj=aea +datum=NAD83 +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000"
-
-jep[1,]
-plot(jep[1:1000,c('x_epsg_3310','y_epsg_3310')],asp = 1)
 
 #Read in the fire_traits data
 bark_thickness_traits <- read_csv("fire_traits/data/bark_thickness_traits.csv")
@@ -81,3 +80,5 @@ jepsub <- jep %>% filter(current_genus == "Abies", current_species == "magnifica
 View(jepsub)
 jepsub2 <- jep_fire %>% filter(current_genus == "Abies", current_species == "magnifica")
 View(jepsub2)
+
+

@@ -128,6 +128,9 @@ extractmultiple <- function(rasterlayer, layername){
   return(extraction) %>% select(layername)
 }
 
+extractioncli <- raster::extract(x = ppt5180, y = jep, fun = mean, na.rm = T, sp = T)
+
+
 rasterlayers <- c(ppt5180, ppt8110, cwd5180, cwd8110, aet5180, aet8110, djf5180, djf8110, jja5180, jja8110)
 layernames <- c('ppt5180', 'ppt8110', 'cwd5180', 'cwd8110', 'aet5180', 'aet8110', 'djf5180', 'djf8110', 'jja5180', 'jja8110')
 
