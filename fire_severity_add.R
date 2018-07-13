@@ -113,7 +113,7 @@ proj4string(tif2015) <- aea.project
 
 
 extractmultiple <- function(rasterlayer, layername){
-  extraction <- raster::extract(x = rasterlayer, y = jep, fun = mean, na.rm = T, sp = T)
+  extraction <- raster::extract(x = rasterlayer, y = jep, buffer = 1000, small = T, fun = mean, na.rm = T, sp = T)
   extraction %<>% tbl_df()
   return(extraction) %>% select(layername)
 }

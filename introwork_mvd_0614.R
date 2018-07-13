@@ -91,7 +91,7 @@ coordinates(jep) <- ~ x_epsg_3310 + y_epsg_3310
 proj4string(jep) <- aea.project
 
 
-pptextract81 <- raster::extract(x = ppt8110, y = jep, fun = mean, na.rm = T, sp = T)
+pptextract81 <- raster::extract(x = ppt8110, y = jep, buffer = 1000, small = T, fun = mean, na.rm = T, sp = T)
 pptextract81 %<>% tbl_df()
 names(pptextract81)[names(df) == 'layer'] <- 'ppt81'
 
@@ -122,7 +122,7 @@ coordinates(jepcoords) <- ~ x_epsg_3310 + y_epsg_3310
 proj4string(jepcoords) <- aea.project
 
 extractmultiple <- function(rasterlayer, layername){
-  extraction <- raster::extract(x = rasterlayer, y = jep, fun = mean, na.rm = T, sp = T)
+  extraction <- raster::extract(x = rasterlayer, y = jep, buffer = 1000, small = T, fun = mean, na.rm = T, sp = T)
   extraction %<>% tbl_df()
   names(extraction)[names(extraction) == 'layer'] <- layername
   return(extraction) %>% select(layername)

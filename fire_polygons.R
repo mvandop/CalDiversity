@@ -122,7 +122,7 @@ coordinates(jep) <- ~ x_epsg_3310 + y_epsg_3310
 aea.project <- "+proj=aea +datum=NAD83 +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000"
 proj4string(jep) <- aea.project
 
-firecountextract <- raster::extract(x = firep, y = jep, fun = mean, na.rm = T, sp = T)
+firecountextract <- raster::extract(x = firep, y = jep, buffer = 1000, small = T, fun = mean, na.rm = T, sp = T)
 firecountextract %<>% tbl_df()
 names(firecountextract)[names(firecountextract) == 'layer'] <- 'firecount'
 

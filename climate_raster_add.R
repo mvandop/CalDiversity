@@ -91,7 +91,7 @@ coordinates(jep) <- ~ x_epsg_3310 + y_epsg_3310
 proj4string(jep) <- aea.project
 
 
-pptextract81 <- raster::extract(x = ppt8110, y = jep, fun = mean, na.rm = T, sp = T)
+pptextract81 <- raster::extract(x = ppt8110, y = jep, buffer = 1000, small = T, fun = mean, na.rm = T, sp = T)
 pptextract81 %<>% tbl_df()
 names(pptextract81)[names(df) == 'layer'] <- 'ppt81'
 
@@ -122,13 +122,16 @@ coordinates(jepcoords) <- ~ x_epsg_3310 + y_epsg_3310
 proj4string(jepcoords) <- aea.project
 
 extractmultiple <- function(rasterlayer, layername){
-  extraction <- raster::extract(x = rasterlayer, y = jep, fun = mean, na.rm = T, sp = T)
+  extraction <- raster::extract(x = rasterlayer, y = jepcoords, buffer = 1000, small = T, fun = mean, na.rm = T, sp = T)
   extraction %<>% tbl_df()
   names(extraction)[names(extraction) == 'layer'] <- layername
   return(extraction) %>% select(layername)
 }
 
-extractioncli <- raster::extract(x = ppt5180, y = jep, fun = mean, na.rm = T, sp = T)
+extractioncli <- raster::extract(x = ppt5180, y = jepcoords, buffer = 1000, small = T, fun = mean, na.rm = T, sp = T)
+extractioncli2 <- raster::extract(x = ppt8110, y = jepcoords, buffer = 1000, small = T, fun = mean, na.rm = T, sp = T)
+saveRDS(extractioncli, file = paste0(box, "/Data/ppt5180extraction.RData"))
+saveRDS(extractioncli2, file = paste0(box, "/Data/ppt8110extraction.RData"))
 
 
 rasterlayers <- c(ppt5180, ppt8110, cwd5180, cwd8110, aet5180, aet8110, djf5180, djf8110, jja5180, jja8110)
